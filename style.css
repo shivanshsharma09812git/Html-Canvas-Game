@@ -1,3 +1,5 @@
+/* why am i even using css */
+
 html, body{
     overflow: hidden;
 }
@@ -5,4 +7,6 @@ html, body{
 #canvas{
     position: absolute;
     background-color: black;
+    top: 0px;
+    left: 0px;
 }
