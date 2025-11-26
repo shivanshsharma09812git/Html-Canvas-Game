@@ -1,4 +1,6 @@
-
+/*
+An html and javascript game
+*/
 
 const cvs=document.getElementById("canvas");
 const ctx=cvs.getContext("2d");
@@ -68,7 +70,7 @@ fuelImg.src="assets/fuel.png";
 let fuels={};
 fillDict(fuels, maxFuelDrop);
 
-// extra vars
+// -------------extra vars-----------------
 let enemys={};
 function fillDict(dict, amount){
     for(let i=0; i<amount; i+=1){
@@ -88,7 +90,9 @@ fillDict(stars, StarsDensity)
 let asteroids = [];
 const asteroidImgs = [];
 let collided=false;
-// event listeners 
+//-------------------------------------------
+
+// ----------event listeners-------------------
 document.addEventListener("reload", resizeCvs());
 document.addEventListener("fullscreenchange", resizeCvs());
 document.addEventListener("resize", resizeCvs());
@@ -114,7 +118,7 @@ re();
 function loadAsteroids(){
     for(let i=1; i<=3; i++){      
         const img = new Image();
-        img.src = `assets/astroid${i}.png`; // i know the speeling si wrong
+        img.src = `assets/astroid${i}.png`; // i know the speeling is wrong cause I am illitrate
         asteroidImgs.push(img);
     }
 }
@@ -123,7 +127,7 @@ loadAsteroids();
 generateAsteroidRing();
 document.addEventListener("click", (e)=>{shoot(e)});
 
-
+//------------------------------------------------
 
 
 
@@ -196,11 +200,8 @@ function restartCenter(){
 }
 
 function resizeCvs(){
-    cvs.width=window.innerWidth * 3;
-    cvs.height=window.innerHeight * 3;
-    cvs.style.position="absolute";
-    cvs.style.top=0;
-    cvs.style.left=0;
+    cvs.width=window.innerWidth;
+    cvs.height=window.innerHeight;
     x=window.innerWidth/2 - width/2;
     y=window.innerHeight/2 - height/2;
 }
@@ -321,14 +322,14 @@ function movePlayer(){
             if(keys.has(" ") && fuel > 0){
                 enemys[i].y+=sprintSpeed;
                 isInvincible=true; // make player invincibe for a tick 
-                fuel-=0.0166666667/60
+                fuel-=0.0166666667/60 // eqeal to 1 second
             }
         }
         angles=0;
     }
     if(keys.has("s")){
         for(let i=0; i<maxEnemies; i+=1){
-            enemys[i].y-=speed;
+            enemys[i].y-=speed; // we are moving enemies cause i thought that will be easier
         if(keys.has(" ") && fuel > 0){
                 enemys[i].y-=sprintSpeed;
                 isInvincible=true;
@@ -400,7 +401,7 @@ function moveEntity(){
     spawnThis(enemys, maxEnemies, window.innerWidth, window.innerHeight);
     for(let i=0; i<maxEnemies; i+=1){
         if (enemys[i] != null){
-            let moveInAnglesToX=Math.atan2(enemys[i].x, x)
+            let moveInAnglesToX=Math.atan2(enemys[i].x, x) // I a bad making these math stuff 
             let moveInAnglesToY=Math.atan2(enemys[i].y, y)
             if(enemys[i].x > x){
                 enemys[i].x-=eSpeed;
@@ -414,7 +415,7 @@ function moveEntity(){
             if(enemys[i].y < y){
                 enemys[i].y+=eSpeed;
             }
-            rotateImage(enemysImage, enemys[i].x, enemys[i].y, eWidth, eHeight, Math.sin(moveInAnglesToY) * 360 - Math.cos(moveInAnglesToX) * 360)
+            rotateImage(enemysImage, enemys[i].x, enemys[i].y, eWidth, eHeight, Math.sin(moveInAnglesToY) * 360 - Math.cos(moveInAnglesToX) * 360) // so this wrong
             if(collisionDetect(enemys[i].x, enemys[i].y, eWidth, eHeight, x, y, width, height)){
                 killPlayer();
             }
@@ -581,10 +582,10 @@ function drawAsteroids(){
             ctx.save();
             ctx.translate(a.x - x + window.innerWidth/2, a.y - y + window.innerHeight/2);
             ctx.rotate(a.rotation);
-            if(a.img === "assets/astroid3.png"){
+            if(a.img === "assets/astroid3.png"){ // since the size of the asteroid is image based
                 ctx.drawImage(a.img, -a.size/2, -a.size/2, a.size/8, a.size/8);
             }
-            else if(a.img === "assets/astroid2.png"){
+            else if(a.img === "assets/astroid2.png"){ // same
                 ctx.drawImage(a.img, -a.size/2, -a.size/2, a.size*2, a.size*2);
             }
             else{
@@ -629,12 +630,12 @@ function drawAsteroids(){
 // ---------------------LASERS AND CENTER BOSS----------------------------
 
 function drawLaser(){
-    if(Math.floor(inGameTime)>=spawnTime){
+    if(Math.floor(inGameTime)>=spawnTime){ 
         addLasers("up", lX, lY, 0, -300000)
         addLasers("down", lX, lY, 0, 300000)
         addLasers("left", lX, lY, -300000, 0)
         addLasers("right", lX, lY, 300000, 0)
-        if(keys.has("w")){
+        if(keys.has("w")){ // i can make this much shorter and i will
             lasers["up"].y+=speed
             lasers["down"].y+=speed
             lasers["left"].y+=speed
