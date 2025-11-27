@@ -31,21 +31,27 @@ let inGameTime=0;
 let eWidth=100;
 let eHeight=100;
 let eColor="red"; 
-let eSpeed=1.5;
+let eSpeed=2;
 let maxEnemies=50;
 let enemysImage=new Image()
 enemysImage.src="assets/invaders.png"
 
 // laser config 
-let lX=Math.random() * wWidthTimes * window.innerWidth/3;
-let lY=Math.random() * wHeightTimes * window.innerHeight/3;
-let lRadius=700;
-let lDuration=0;
-const MaxLDuration=3;
-const spawnTime=30;
+const cX=Math.random() * wWidthTimes * window.innerWidth/3;
+const cY=Math.random() * wHeightTimes * window.innerHeight/3;
+const cRadius=700;
+let cDuration=0;
+const MaxCDuration=3;
+const cSpawnTime=30;
 
-let lasers={}
-
+let cLasers={};
+let centerBoss={
+    0:{
+        x:cX, 
+        y:cY, 
+        r:cRadius,
+    }
+};
 // ammo config
 let Ammo=10;
 let baseAmmoValue=Ammo;
@@ -68,7 +74,7 @@ fuelImg.src="assets/fuel.png";
 let fuels={};
 fillDict(fuels, maxFuelDrop);
 
-// extra vars
+// extra vars-----------------------
 let enemys={};
 function fillDict(dict, amount){
     for(let i=0; i<amount; i+=1){
@@ -273,11 +279,11 @@ function drawDrops(){
     ctx.font="20px Arial";
     ctx.fillStyle='white';
     ctx.strokeStyle="white";
-    ctx.fillText(Math.floor(fuel), window.innerWidth-150, window.innerHeight-50);
+    ctx.fillText(Math.ceil(fuel), window.innerWidth-150, window.innerHeight-50);
     ctx.fillText(Ammo, window.innerWidth-150-150, window.innerHeight-50);
     ctx.stroke();
     rotateImage(fuelImg, window.innerWidth-150-25, window.innerHeight-50-25-50, 50, 50)
-    rotateImage(ammoImg, window.innerWidth-150-12.5-150, window.innerHeight-50-25-50, 50, 50)
+    rotateImage(ammoImg, window.innerWidth-150-12.5/2-150, window.innerHeight-50-25-50, 50, 50)
 }
 
 function drawLine(x, y){
@@ -399,27 +405,24 @@ function shoot(e){
 function moveEntity(){
     spawnThis(enemys, maxEnemies, window.innerWidth, window.innerHeight);
     for(let i=0; i<maxEnemies; i+=1){
+        let dx = x - enemys[i].x;
+        let dy = y - enemys[i].y;
+
+        let dist = Math.hypot(dx, dy);
+        dx = dx/dist;
+        dy = dy/dist;
+        enemys[i].angle = Math.atan2(dy, dx);
+        console.log(enemys[0].angle * 120)
         if (enemys[i] != null){
-            let moveInAnglesToX=Math.atan2(enemys[i].x, x)
-            let moveInAnglesToY=Math.atan2(enemys[i].y, y)
-            if(enemys[i].x > x){
-                enemys[i].x-=eSpeed;
-            }
-            if(enemys[i].x < x){
-                enemys[i].x+=eSpeed;
-            }
-            if(enemys[i].y > y){
-                enemys[i].y-=eSpeed;
-            }
-            if(enemys[i].y < y){
-                enemys[i].y+=eSpeed;
-            }
-            rotateImage(enemysImage, enemys[i].x, enemys[i].y, eWidth, eHeight, Math.sin(moveInAnglesToY) * 360 - Math.cos(moveInAnglesToX) * 360)
+            enemys[i].x += dx * eSpeed;
+            enemys[i].y += dy * eSpeed;
+            rotateImage(enemysImage, enemys[i].x, enemys[i].y, eWidth, eHeight, enemys[i].angle * 57.29578 + 90); // do not touch this
             if(collisionDetect(enemys[i].x, enemys[i].y, eWidth, eHeight, x, y, width, height)){
                 killPlayer();
             }
             if(lineIntersectsRect(x, y, shootTo.x, shootTo.y, enemys[i].x, enemys[i].y, eWidth, eHeight) && shootDuration !== 0){
                 enemys[i]=null;
+                spawnThis(enemys, maxEnemies, window.innerWidth, window.innerHeight);
             }
         }
     }
@@ -574,17 +577,20 @@ function generateAsteroidRing(){
 function drawAsteroids(){
     let timer=0;
     for(const a of asteroids){
-    
+        const sx = a.x - x + window.innerWidth/2;
+        const sy = a.y - y + window.innerHeight/2;
         // spin
         a.rotation += a.spin;
-        if(a.x > 0 && a.y > 0 && a.x < window.innerWidth && a.y < window.innerHeight){ // culling
+        if (sx > -200 && sx < window.innerWidth+200 &&
+            sy > -200 && sy < window.innerHeight+200){ // culling
+
             ctx.save();
             ctx.translate(a.x - x + window.innerWidth/2, a.y - y + window.innerHeight/2);
             ctx.rotate(a.rotation);
-            if(a.img === "assets/astroid3.png"){
+            if(a.img === "astroid3.png"){
                 ctx.drawImage(a.img, -a.size/2, -a.size/2, a.size/8, a.size/8);
             }
-            else if(a.img === "assets/astroid2.png"){
+            else if(a.img === "astroid2.png"){
                 ctx.drawImage(a.img, -a.size/2, -a.size/2, a.size*2, a.size*2);
             }
             else{
@@ -629,64 +635,14 @@ function drawAsteroids(){
 // ---------------------LASERS AND CENTER BOSS----------------------------
 
 function drawLaser(){
-    if(Math.floor(inGameTime)>=spawnTime){
-        addLasers("up", lX, lY, 0, -300000)
-        addLasers("down", lX, lY, 0, 300000)
-        addLasers("left", lX, lY, -300000, 0)
-        addLasers("right", lX, lY, 300000, 0)
-        if(keys.has("w")){
-            lasers["up"].y+=speed
-            lasers["down"].y+=speed
-            lasers["left"].y+=speed
-            lasers["right"].y+=speed
-            lY+=speed
-            if(keys.has(" ") && fuel > 0){
-                lasers["up"].y+=sprintSpeed
-                lasers["down"].y+=sprintSpeed
-                lasers["left"].y+=sprintSpeed
-                lasers["right"].y+=sprintSpeed
-                lY+=sprintSpeed
-            }
-        } if(keys.has("s")){
-            lasers["up"].y-=speed
-            lasers["down"].y-=speed
-            lasers["left"].y-=speed
-            lasers["right"].y-=speed
-            lY-=speed
-            if(keys.has(" ") && fuel > 0){
-                lasers["up"].y-=sprintSpeed
-                lasers["down"].y-=sprintSpeed
-                lasers["left"].y-=sprintSpeed
-                lasers["right"].y-=sprintSpeed
-                lY-=sprintSpeed
-            }
-        } if(keys.has("a")){
-            lasers["up"].x+=speed
-            lasers["down"].x+=speed
-            lasers["left"].x+=speed
-            lasers["right"].x+=speed
-            lX+=speed
-            if(keys.has(" ") && fuel > 0){
-                lasers["up"].x+=sprintSpeed
-                lasers["down"].x+=sprintSpeed
-                lasers["left"].x+=sprintSpeed
-                lasers["right"].x+=sprintSpeed
-                lX+=sprintSpeed
-            }
-        } if(keys.has("d")){
-            lasers["up"].x-=speed
-            lasers["down"].x-=speed
-            lasers["left"].x-=speed
-            lasers["right"].x-=speed
-            lX-=speed
-            if(keys.has(" ")  && fuel > 0){
-                lasers["up"].x-=sprintSpeed
-                lasers["down"].x-=sprintSpeed
-                lasers["left"].x-=sprintSpeed
-                lasers["right"].x-=sprintSpeed
-                lX-=sprintSpeed
-            }
-        } if(Math.floor(inGameTime) >= spawnTime+MaxLDuration){
+    if(Math.floor(inGameTime)>=cSpawnTime){
+        addLasers(0, cX, cY, 0, -300000);
+        addLasers(1, cX, cY, 0, 300000);
+        addLasers(2, cX, cY, -300000, 0);
+        addLasers(3, cX, cY, 300000, 0);
+        moveDrops(cLasers, 4);
+        moveDrops(centerBoss, 1);
+        if(Math.floor(inGameTime) >= cSpawnTime+MaxCDuration){
             killPlayerFromCenter();
         }
         drawCenter();
@@ -694,32 +650,32 @@ function drawLaser(){
 }
 
 function addLasers(name, x, y, toX, toY){
-    if(lasers[name]===undefined){
-        lasers[name]={x:x, y:y, toX: toX, toY: toY, duration:0}
+    if(cLasers[name]===undefined){
+        cLasers[name]={x:x, y:y, toX: toX, toY: toY, duration:0}
     }
     ctx.beginPath();
-    ctx.moveTo(lasers[name].x, lasers[name].y);
-    if(lasers[name].duration <= MaxLDuration){
+    ctx.moveTo(cLasers[name].x, cLasers[name].y);
+    if(cLasers[name].duration <= MaxCDuration){
         ctx.strokeStyle="rgba(140, 8, 8, 0.27)";
-        lasers[name].duration+=0.0166666667
+        cLasers[name].duration+=0.0166666667
     } else {ctx.strokeStyle="rgba(140, 8, 8, 1)";}
     ctx.lineWidth=6;
-    ctx.lineTo(lasers[name].toX, lasers[name].toY);
+    ctx.lineTo(cLasers[name].toX, cLasers[name].toY);
     ctx.stroke();
     ctx.closePath();
 }
 
 function drawCenter(){
     ctx.beginPath();
-    if(lDuration<=MaxLDuration){
+    if(cDuration<=MaxCDuration){
         ctx.strokeStyle="#a6a6a627";
         ctx.fillStyle="rgba(75, 75, 75, 0.27)";
-        lDuration+=0.0166666667
+        cDuration+=0.0166666667
     } else {
         ctx.strokeStyle="#a6a6a6ff";
         ctx.fillStyle="rgba(75, 75, 75, 1)";    
     }
-    ctx.arc(lX, lY, lRadius, 0, Math.PI * 2);
+    ctx.arc(centerBoss[0].x, centerBoss[0].y, centerBoss[0].r, 0, Math.PI * 2);
     ctx.fill();
     ctx.stroke();
     ctx.closePath();
@@ -727,16 +683,13 @@ function drawCenter(){
 
 
 function killPlayerFromCenter(){
-    if(circularcollisonDetect(x, y, lX, lY, width, height, 700)){
+    if(circularcollisonDetect(x, y, centerBoss[0].x, centerBoss[0].y, width, height, centerBoss[0].r)){
         killPlayer();
-    } if(lineIntersectsRect(lasers["up"].x, lasers["up"].y, lasers["up"].toX, lasers["up"].toY, x, y, width, height) && !isInvincible){
-        killPlayer();
-    } if(lineIntersectsRect(lasers["down"].x, lasers["down"].y, lasers["down"].toX, lasers["down"].toY, x, y, width, height)  && !isInvincible){
-        killPlayer();
-    } if(lineIntersectsRect(lasers["left"].x, lasers["left"].y, lasers["left"].toX, lasers["left"].toY, x, y, width, height)  && !isInvincible){
-        killPlayer();
-    } if(lineIntersectsRect(lasers["right"].x, lasers["right"].y, lasers["right"].toX, lasers["right"].toY, x, y, width, height)  && !isInvincible){
-        killPlayer();
+    }
+    for(let i=0; i < 4; i+=1){
+        if(lineIntersectsRect(cLasers[i].x, cLasers[i].y, cLasers[i].toX, cLasers[i].toY, x, y, width, height) && !isInvincible){
+            killPlayer();
+        }
     }
 }
 
@@ -751,18 +704,20 @@ function spawnAmmo(){
         if(collisionDetect(x, y, width, height, ammos[i].x, ammos[i].y, 40, 40)){
             Ammo+=getAmmoPerDrop;
             ammos[i]=null
+            spawnThis(ammos, maxAmmoDrop, window.innerWidth, window.innerHeight);
         }
     }
     moveDrops(ammos, maxAmmoDrop);
 }
 
 function spawnFuels(){
-    spawnThis(fuels, maxFuelDrop, window.innerWidth, window.innerHeight);
     for(let i=0; i < maxFuelDrop; i+=1){
+        spawnThis(fuels, maxFuelDrop, window.innerWidth, window.innerHeight);
         rotateImage(fuelImg, fuels[i].x, fuels[i].y, 40, 40, 0);
         if(collisionDetect(x, y, width, height, fuels[i].x, fuels[i].y, 40, 40)){
             fuel+=getFuelPerDrop;
             fuels[i]=null;
+            spawnThis(fuels, maxFuelDrop, window.innerWidth, window.innerHeight);
         }
     }
     moveDrops(fuels, maxFuelDrop);
