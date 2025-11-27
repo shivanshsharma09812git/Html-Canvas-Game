@@ -435,7 +435,7 @@ function doLetTheDamnEnemiesColide(){
                 enemys[j].x, enemys[j].y, eWidth, eHeight
             )){
                 if(enemys[i].x == enemys[j].x && enemys[i].y == enemys[j].y){
-                    // do nothing
+                    continue
                 } else if(enemys[j].x < enemys[i].x){
                     enemys[j].x-=eSpeed;
                 } else if(enemys[j].x > enemys[i].x){
