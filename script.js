@@ -32,17 +32,19 @@ let eWidth=100;
 let eHeight=100;
 let eColor="red"; 
 let eSpeed=2;
-let maxEnemies=50;
+let maxEnemies=40;
 let enemysImage=new Image()
 enemysImage.src="assets/invaders.png"
 
 // laser config 
-const cX=Math.random() * wWidthTimes * window.innerWidth/3;
-const cY=Math.random() * wHeightTimes * window.innerHeight/3;
+let cX=Math.random() * wWidthTimes * window.innerWidth/3;
+let cY=Math.random() * wHeightTimes * window.innerHeight/3;
 const cRadius=700;
 let cDuration=0;
-const MaxCDuration=3;
+const MaxCDuration=1.75;
 const cSpawnTime=30;
+const leastLasers=30;
+const maxLasers=100;
 
 let cLasers={};
 let centerBoss={
@@ -52,6 +54,15 @@ let centerBoss={
         r:cRadius,
     }
 };
+let lasers={};
+let timeToIncrementWithForRand=10;
+let timeToIncrementWithForStatic=3;
+let cpOfTimeToIncrementWithForRand=15;
+let cpOfTimeToIncrementWithForStatic=10;
+let nextTimeForLaserToStrike=Math.max(Math.random() * timeToIncrementWithForRand, timeToIncrementWithForStatic);
+console.log(nextTimeForLaserToStrike)
+let lTimeForVanish=1;
+let randLValue=Math.floor(Math.max(Math.random()*maxLasers, leastLasers));
 // ammo config
 let Ammo=10;
 let baseAmmoValue=Ammo;
@@ -95,9 +106,9 @@ let asteroids = [];
 const asteroidImgs = [];
 let collided=false;
 // event listeners 
-document.addEventListener("reload", resizeCvs());
-document.addEventListener("fullscreenchange", resizeCvs());
-document.addEventListener("resize", resizeCvs());
+document.addEventListener("reload", resizeCvs);
+document.addEventListener("fullscreenchange", resizeCvs);
+document.addEventListener("resize", resizeCvs);
 
 document.addEventListener("keydown", (ev)=>{
     keys.add(ev.key);
@@ -194,10 +205,17 @@ main();
 
 // ----------------------------- GAME FUNCTIONS -----------------------------
 function restartCenter(){
-    lX=Math.random() * wHeightTimes;
-    lY=Math.random() * wWidthTimes;
-    lDuration=0;
-    lasers={}
+    cX=Math.random() * wHeightTimes;
+    cY=Math.random() * wWidthTimes;
+    centerBoss={
+        0:{
+            x:cX, 
+            y:cY, 
+            r:cRadius,
+        }
+    };
+    cDuration=0;
+    cLasers={}
     inGameTime=0;
 }
 
@@ -220,10 +238,14 @@ function restartGame(){
     restartCenter();
     Ammo=baseAmmoValue;
     fuel=baseFuelValue;
-    ammos={}
-    fuels={}
-    fillDict(ammos, maxAmmoDrop)
-    fillDict(fuels, maxFuelDrop)
+    ammos={};
+    fuels={};
+    fillDict(ammos, maxAmmoDrop);
+    fillDict(fuels, maxFuelDrop);
+    timeToIncrementWithForRand=cpOfTimeToIncrementWithForRand;
+    timeToIncrementWithForStatic=cpOfTimeToIncrementWithForStatic;
+    nextTimeForLaserToStrike=Math.max(Math.random() * timeToIncrementWithForRand, timeToIncrementWithForStatic);
+    killLasers(lasers, randLValue);
     main();
 }
 
@@ -327,7 +349,7 @@ function movePlayer(){
             if(keys.has(" ") && fuel > 0){
                 enemys[i].y+=sprintSpeed;
                 isInvincible=true; // make player invincibe for a tick 
-                fuel-=0.0166666667/60
+                fuel-=0.0166666667/maxEnemies
             }
         }
         angles=0;
@@ -338,7 +360,7 @@ function movePlayer(){
         if(keys.has(" ") && fuel > 0){
                 enemys[i].y-=sprintSpeed;
                 isInvincible=true;
-                fuel-=0.0166666667/60
+                fuel-=0.0166666667/maxEnemies
             }
         }
         angles=180
@@ -349,7 +371,7 @@ function movePlayer(){
             if(keys.has(" ") && fuel > 0){
                 enemys[i].x-=sprintSpeed;
                 isInvincible=true;
-                fuel-=0.0166666667/60
+                fuel-=0.0166666667/maxEnemies
             }
         }
         angles=90
@@ -360,7 +382,7 @@ function movePlayer(){
             if(keys.has(" ") && fuel > 0){
                 enemys[i].x+=sprintSpeed;
                 isInvincible=true;
-                fuel-=0.00166666667/60
+                fuel-=0.00166666667/maxEnemies
             }
         }
         angles=270
@@ -387,7 +409,7 @@ function killPlayer(){
     ctx.fillText("You Died", window.innerWidth/2-150, window.innerHeight/2-50);
     ctx.stroke();
     isDead=true;
-    rotate=0;
+    angles=0;
     cancelAnimationFrame(frameId);
     re();
 }
@@ -405,15 +427,14 @@ function shoot(e){
 function moveEntity(){
     spawnThis(enemys, maxEnemies, window.innerWidth, window.innerHeight);
     for(let i=0; i<maxEnemies; i+=1){
-        let dx = x - enemys[i].x;
-        let dy = y - enemys[i].y;
-
-        let dist = Math.hypot(dx, dy);
-        dx = dx/dist;
-        dy = dy/dist;
-        enemys[i].angle = Math.atan2(dy, dx);
-        console.log(enemys[0].angle * 120)
         if (enemys[i] != null){
+            let dx = x - enemys[i].x;
+            let dy = y - enemys[i].y;
+
+            let dist = Math.hypot(dx, dy);
+            dx = dx/dist;
+            dy = dy/dist;
+            enemys[i].angle = Math.atan2(dy, dx);
             enemys[i].x += dx * eSpeed;
             enemys[i].y += dy * eSpeed;
             rotateImage(enemysImage, enemys[i].x, enemys[i].y, eWidth, eHeight, enemys[i].angle * 57.29578 + 90); // do not touch this
@@ -430,6 +451,7 @@ function moveEntity(){
 
 function doLetTheDamnEnemiesColide(){
     for(let i=0; i < maxEnemies; i+=1){
+        if(enemys[i]) continue;
         for(let j=0; j < maxEnemies; j+=1){
             if (collisionDetect(enemys[i].x, enemys[i].y, eWidth, eHeight,
                 enemys[j].x, enemys[j].y, eWidth, eHeight
@@ -504,18 +526,20 @@ function drawStars(){
             let xPos=Math.random()*window.innerWidth;
             let yPos=Math.random()*window.innerHeight;
             let radius= Math.random()*5
-            stars[i]={x:xPos, y:yPos, radius:radius}
+            let speed=Math.random()*.25
+            stars[i]={x:xPos, y:yPos, radius:radius, speed:speed}
         }
         else{
             // draws 
             ctx.beginPath();
             ctx.strokeStyle="white";
+            ctx.lineWidth=3;
             ctx.fillStyle="white";
             ctx.arc(stars[i].x, stars[i].y, stars[i].radius, 0, Math.PI * 2, true);
             ctx.fill();
             ctx.stroke();
             ctx.closePath();
-            stars[i].y+=1
+            stars[i].y+=stars[i].speed;
             if(keys.has("w")){
                 stars[i].y+=speed
                 if(keys.has(" ")&& fuel > 0){
@@ -633,31 +657,146 @@ function drawAsteroids(){
 // -----------------------------------------------------------------------
 
 // ---------------------LASERS AND CENTER BOSS----------------------------
+function spawnLaser(lasers, amount){
+    for(let i=0; i < amount; i++){
+        if(lasers[i] === undefined || lasers[i] ===  null){
+            let x, y, toX, toY;
+            const RandSide=Math.floor(Math.random() * 4);
+            if(RandSide === 0){
+                x=Math.min(-Math.random()*30000, WorldRadius*wWidthTimes* 5000);
+                y=Math.min(-Math.random()*30000, WorldRadius*wHeightTimes* 5000);
+                toX=Math.min(Math.random()*30000, WorldRadius*wWidthTimes* 5000);
+                toY=Math.min(Math.random()*30000, WorldRadius*wHeightTimes* 5000);
+            }
+            else if(RandSide === 1){
+                x=Math.min(Math.random()*30000, WorldRadius*wWidthTimes* 5000);
+                y=Math.min(-Math.random()*30000, WorldRadius*wHeightTimes* 5000);
+                toX=Math.min(-Math.random()*30000, WorldRadius*wWidthTimes* 5000);
+                toY=Math.min(Math.random()*30000, WorldRadius*wHeightTimes* 5000);
+            }
+            else if(RandSide === 2){
+                x=Math.min(-Math.random()*30000, WorldRadius*wWidthTimes* 5000);
+                y=Math.min(Math.random()*30000, WorldRadius*wHeightTimes* 5000);
+                toX=Math.min(Math.random()*30000, WorldRadius*wWidthTimes* 5000);
+                toY=Math.min(-Math.random()*30000, WorldRadius*wHeightTimes* 5000);
+            }
+            else if(RandSide === 3){
+                x=Math.min(Math.random()*30000, WorldRadius*wWidthTimes* 5000);
+                y=Math.min(Math.random()*30000, WorldRadius*wHeightTimes* 5000);
+                toX=Math.min(-Math.random()*30000, WorldRadius*wWidthTimes* 5000);
+                toY=Math.min(-Math.random()*30000, WorldRadius*wHeightTimes* 5000);
+            }
+            lasers[i]={
+                x:x,
+                y:y,
+                toX:toX,
+                toY:toY,
+                duration:0,
+            }
+            console.log(lasers[i], RandSide)
+        }
+    }
+}
 
 function drawLaser(){
     if(Math.floor(inGameTime)>=cSpawnTime){
-        addLasers(0, cX, cY, 0, -300000);
-        addLasers(1, cX, cY, 0, 300000);
-        addLasers(2, cX, cY, -300000, 0);
-        addLasers(3, cX, cY, 300000, 0);
-        moveDrops(cLasers, 4);
+        addCLasers(0, cX, cY, 0, -300000);
+        addCLasers(1, cX, cY, 0, 300000);
+        addCLasers(2, cX, cY, -300000, 0);
+        addCLasers(3, cX, cY, 300000, 0);
+        for(let i=0; i < 4; i+=1){
+            moveLaser(cLasers[i])
+        }
         moveDrops(centerBoss, 1);
         if(Math.floor(inGameTime) >= cSpawnTime+MaxCDuration){
             killPlayerFromCenter();
         }
         drawCenter();
+    } if(Math.floor(inGameTime) >= nextTimeForLaserToStrike){
+        addLasers();
+    } if(Math.floor(inGameTime) >= nextTimeForLaserToStrike+MaxCDuration+lTimeForVanish){
+        timeToIncrementWithForRand+=cpOfTimeToIncrementWithForStatic;
+        timeToIncrementWithForStatic+=cpOfTimeToIncrementWithForStatic;
+        nextTimeForLaserToStrike=Math.max(Math.random() * timeToIncrementWithForRand, timeToIncrementWithForStatic);
+        killLasers(lasers, randLValue);
+        randLValue=Math.floor(Math.max(Math.random()*maxLasers, leastLasers));
     }
 }
 
-function addLasers(name, x, y, toX, toY){
+function addLasers(){
+    spawnLaser(lasers, randLValue);
+    for(let i=0; i < randLValue; i+=1){
+        if(lasers[i].duration <= MaxCDuration){
+            ctx.strokeStyle="rgba(140, 8, 8, 0.50)";
+            lasers[i].duration += .0166666667;
+        } else if(lasers[i].duration > MaxCDuration) {
+            ctx.strokeStyle="rgba(140, 8, 8, 1)";
+            if(lineIntersectsRect(
+                    lasers[i].x, lasers[i].y, lasers[i].toX, 
+                    lasers[i].toY, x, y, width, height,
+                )
+            ){ killPlayer(); }
+        }
+        ctx.beginPath();
+        ctx.moveTo(lasers[i].x, lasers[i].y);
+        ctx.lineWidth=6;
+        ctx.lineTo(lasers[i].toX, lasers[i].toY);
+        ctx.stroke();
+        ctx.closePath();
+        moveLaser(lasers[i]);
+    }
+}
+
+function killLasers(lasers, value){
+    for(let i=0; i < value; i+=1){
+        lasers[i]=null;
+    }
+}
+
+function moveLaser(laser){
+    if(keys.has("w")){
+        laser.y+=speed;
+        laser.toY+=speed;
+        if(keys.has(" ") && fuel > 0){
+            laser.y+=sprintSpeed;
+            laser.toY+=sprintSpeed;
+        }
+    }
+    if(keys.has("s")){
+        laser.y-=speed;
+        laser.toY-=speed;
+        if(keys.has(" ") && fuel > 0){
+            laser.y-=sprintSpeed;
+            laser.toY-=sprintSpeed;
+        } 
+    }
+    if(keys.has("a")){
+        laser.x+=speed;
+        laser.toX+=speed;
+        if(keys.has(" ") && fuel > 0){
+            laser.x+=sprintSpeed;
+            laser.toX+=sprintSpeed;
+        }
+    }
+    if(keys.has("d")){
+        laser.x-=speed;
+        laser.toX-=speed;
+        if(keys.has(" ")  && fuel > 0){
+            laser.x-=sprintSpeed;
+            laser.toX-=sprintSpeed;
+        }
+    }
+}
+
+function addCLasers(name, x, y, toX, toY){
     if(cLasers[name]===undefined){
         cLasers[name]={x:x, y:y, toX: toX, toY: toY, duration:0}
     }
     ctx.beginPath();
     ctx.moveTo(cLasers[name].x, cLasers[name].y);
     if(cLasers[name].duration <= MaxCDuration){
-        ctx.strokeStyle="rgba(140, 8, 8, 0.27)";
-        cLasers[name].duration+=0.0166666667
+        ctx.strokeStyle="rgba(140, 8, 8, 0.5)";
+        cLasers[name].duration+=0.0166666667;
     } else {ctx.strokeStyle="rgba(140, 8, 8, 1)";}
     ctx.lineWidth=6;
     ctx.lineTo(cLasers[name].toX, cLasers[name].toY);
@@ -670,7 +809,7 @@ function drawCenter(){
     if(cDuration<=MaxCDuration){
         ctx.strokeStyle="#a6a6a627";
         ctx.fillStyle="rgba(75, 75, 75, 0.27)";
-        cDuration+=0.0166666667
+        cDuration+=0.0166666667;
     } else {
         ctx.strokeStyle="#a6a6a6ff";
         ctx.fillStyle="rgba(75, 75, 75, 1)";    
@@ -680,7 +819,6 @@ function drawCenter(){
     ctx.stroke();
     ctx.closePath();
 }
-
 
 function killPlayerFromCenter(){
     if(circularcollisonDetect(x, y, centerBoss[0].x, centerBoss[0].y, width, height, centerBoss[0].r)){
